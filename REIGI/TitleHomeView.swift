@@ -9,6 +9,7 @@ struct TitleHomeView: View {
     @State private var showMenu = false
     @State private var animateTitle = false
     @State private var animateButton = false
+    @AppStorage("reigi.bgmMuted") private var bgmMuted = false
 
     let startGame: () -> Void
     let startFromStage: (Int) -> Void
@@ -83,6 +84,7 @@ struct TitleHomeView: View {
             StageDrawerMenu(
                 isOpen: showMenu,
                 stages: stages,
+                bgmMuted: $bgmMuted,
                 startFromStage: { index in
                     showMenu = false
                     startFromStage(index)
@@ -94,6 +96,16 @@ struct TitleHomeView: View {
                 animateTitle = true
             }
             animateButton = true
+            MainBGMPlayer.shared.playMainLoop()
+        }
+        .onDisappear {
+            MainBGMPlayer.shared.stop()
+        }
+        .onChange(of: bgmMuted) { _, muted in
+            AudioMuteState.setMuted(muted)
+            if !muted {
+                MainBGMPlayer.shared.playMainLoop()
+            }
         }
         .simultaneousGesture(
             DragGesture(minimumDistance: 18)
@@ -160,6 +172,7 @@ struct TitleHomeView: View {
 private struct StageDrawerMenu: View {
     let isOpen: Bool
     let stages: [StageInfo]
+    @Binding var bgmMuted: Bool
     let startFromStage: (Int) -> Void
 
     var body: some View {
@@ -198,6 +211,21 @@ private struct StageDrawerMenu: View {
             }
 
             Spacer()
+
+            Button {
+                bgmMuted.toggle()
+            } label: {
+                HStack {
+                    Image(systemName: bgmMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    Text(bgmMuted ? "BGM ONにする" : "BGM OFFにする")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                }
+                .padding(12)
+                .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 18)
         }
         .padding(.top, 80)
         .padding(.horizontal, 14)

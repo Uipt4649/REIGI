@@ -33,6 +33,7 @@ struct ShrineStageView: View {
         }
         .onDisappear {
             cancelAllScheduled()
+            ThinkingTimePlayer.shared.stop()
             monitor.stop()
         }
     }
@@ -42,6 +43,8 @@ struct ShrineStageView: View {
         switch phase {
         case .intro:
             ritualIntroView
+        case .prompt:
+            ritualPromptView
         case .readyCountdown:
             ritualCountdownView
         case .monitoring:
@@ -61,8 +64,7 @@ struct ShrineStageView: View {
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
-            Text("3秒後にカウントダウンが始まります")
-                .foregroundStyle(.white.opacity(0.8))
+
         }
     }
 
@@ -75,6 +77,15 @@ struct ShrineStageView: View {
                 .font(.system(size: 120, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
         }
+    }
+
+    private var ritualPromptView: some View {
+        Text("二礼二拍手一礼しろ！！！")
+            .font(.system(size: 50, weight: .black, design: .rounded))
+            .foregroundStyle(.yellow)
+            .shadow(color: .red.opacity(0.7), radius: 14)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 20)
     }
 
     private var ritualMonitoringView: some View {
@@ -178,10 +189,14 @@ struct ShrineStageView: View {
         cancelAllScheduled()
         message = ""
         animatePhaseChange(to: .intro)
+        QuizAudioPlayer.shared.playOnce()
         schedule(after: 3) {
-            readyCountdown = 3
-            animatePhaseChange(to: .readyCountdown)
-            runReadyTick()
+            animatePhaseChange(to: .prompt)
+            schedule(after: 3) {
+                readyCountdown = 3
+                animatePhaseChange(to: .readyCountdown)
+                runReadyTick()
+            }
         }
     }
 
@@ -202,6 +217,7 @@ struct ShrineStageView: View {
         message = ""
         monitor.beginGestureTracking()
         animatePhaseChange(to: .monitoring)
+        ThinkingTimePlayer.shared.playLoop()
         runMonitoringTick()
     }
 
@@ -217,16 +233,19 @@ struct ShrineStageView: View {
     }
 
     private func evaluateRitual() {
+        ThinkingTimePlayer.shared.stop()
         let bowOK = monitor.bowEventCount >= 3
         let clapOK = monitor.clapEventCount >= 2
         let isCorrect = bowOK && clapOK
         message = isCorrect ? "正解！次は参道クイズです" : "不正解。二礼二拍手一礼をもう一度"
 
         if isCorrect {
+            QuizResultSoundPlayer.shared.playCorrect()
             schedule(after: 1.0) {
                 animatePhaseChange(to: .pathQuiz)
             }
         } else {
+            QuizResultSoundPlayer.shared.playWrong()
             schedule(after: 1.0) {
                 startRitualFlow()
             }
@@ -237,11 +256,13 @@ struct ShrineStageView: View {
         pathChoice = choice
         if choice == .edge {
             message = "正解！中央は神様の通り道なので、端を歩きます。"
+            QuizResultSoundPlayer.shared.playCorrect()
             schedule(after: 1.1) {
                 onStageClear()
             }
         } else {
             message = "不正解。中央は避けて、端を歩きましょう。"
+            QuizResultSoundPlayer.shared.playWrong()
         }
     }
 
@@ -266,6 +287,7 @@ struct ShrineStageView: View {
 
     private enum Phase {
         case intro
+        case prompt
         case readyCountdown
         case monitoring
         case pathQuiz

@@ -45,6 +45,7 @@ struct BowQuizView: View {
         }
         .onDisappear {
             cancelAllScheduled()
+            ThinkingTimePlayer.shared.stop()
             monitor.stop()
         }
     }
@@ -196,7 +197,10 @@ struct BowQuizView: View {
                 .font(.headline)
                 .foregroundStyle(.white.opacity(0.9))
         }
-        .onAppear { resultPulse = true }
+        .onAppear {
+            resultPulse = true
+            QuizResultSoundPlayer.shared.playCorrect()
+        }
     }
 
     private var wrongResultView: some View {
@@ -213,7 +217,10 @@ struct BowQuizView: View {
                 .font(.headline)
                 .foregroundStyle(.white.opacity(0.9))
         }
-        .onAppear { resultPulse = true }
+        .onAppear {
+            resultPulse = true
+            QuizResultSoundPlayer.shared.playWrong()
+        }
     }
 
     private func startFlowForCurrentQuestion() {
@@ -224,6 +231,7 @@ struct BowQuizView: View {
                 startReadyCountdown()
             }
         } else {
+            QuizAudioPlayer.shared.playOnce()
             schedule(after: 3) {
                 animatePhaseChange(to: .introPrompt)
                 schedule(after: 3) {
@@ -258,6 +266,7 @@ struct BowQuizView: View {
         monitoringCountdown = 5
         detectionCounts = [:]
         animatePhaseChange(to: .monitoring)
+        ThinkingTimePlayer.shared.playLoop()
         runMonitoringTick()
     }
 
@@ -278,11 +287,11 @@ struct BowQuizView: View {
     }
 
     private func evaluateMonitoringResult() {
+        ThinkingTimePlayer.shared.stop()
         let correctCount = detectionCounts[currentQuestion.answer, default: 0]
         let isCorrect = correctCount > 0
         resultPulse = false
-       // feedback = isCorrect ? //"正解! 次の問題へ進みます" : "不正解... 次の問題へ進みます"
-
+       
         if isCorrect {
             combo += 1
             score += 100 + combo * 20
@@ -308,6 +317,7 @@ struct BowQuizView: View {
 
     private func skipCurrentQuestion() {
         cancelAllScheduled()
+        ThinkingTimePlayer.shared.stop()
         if questionIndex >= totalQuestions {
             onStageSkip()
             return

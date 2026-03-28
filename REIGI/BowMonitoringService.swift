@@ -2,10 +2,9 @@
 //  BowMonitoringService.swift
 //  REIGI
 //
-//  Created by Codex on 2026/03/28.
-//
 
 @preconcurrency import AVFoundation
+import CoreML
 import SwiftUI
 import Combine
 import UIKit
@@ -30,6 +29,12 @@ final class BowMonitoringService: NSObject, ObservableObject {
     private var wasBowed = false
     private var clapClosed = false
     private var isTrackingGestures = false
+    private var ojigiRequest: VNCoreMLRequest?
+
+    override init() {
+        super.init()
+        configureOjigiModel()
+    }
 
     func start() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -72,6 +77,18 @@ final class BowMonitoringService: NSObject, ObservableObject {
         isTrackingGestures = true
     }
 
+    private func configureOjigiModel() {
+        guard
+            let model = try? OJIGIClassification(configuration: MLModelConfiguration()).model,
+            let visionModel = try? VNCoreMLModel(for: model)
+        else {
+            return
+        }
+        let request = VNCoreMLRequest(model: visionModel)
+        request.imageCropAndScaleOption = .centerCrop
+        ojigiRequest = request
+    }
+
     private func prepareAndStartSession() {
         sessionQueue.async { [weak self] in
             guard let self else { return }
@@ -93,10 +110,7 @@ final class BowMonitoringService: NSObject, ObservableObject {
     private func configureSession() {
         session.beginConfiguration()
         session.sessionPreset = .high
-
-        defer {
-            session.commitConfiguration()
-        }
+        defer { session.commitConfiguration() }
 
         guard
             let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
@@ -139,9 +153,9 @@ final class BowMonitoringService: NSObject, ObservableObject {
     private func currentVideoOrientation() -> AVCaptureVideoOrientation {
         switch currentInterfaceOrientation() {
         case .landscapeLeft:
-            return .landscapeLeft
-        case .landscapeRight:
             return .landscapeRight
+        case .landscapeRight:
+            return .landscapeLeft
         case .portraitUpsideDown:
             return .portraitUpsideDown
         default:
@@ -150,16 +164,50 @@ final class BowMonitoringService: NSObject, ObservableObject {
     }
 
     private func currentInterfaceOrientation() -> UIInterfaceOrientation {
-        switch UIDevice.current.orientation {
-        case .landscapeLeft:
-            return .landscapeLeft
-        case .landscapeRight:
-            return .landscapeRight
-        case .portraitUpsideDown:
-            return .portraitUpsideDown
-        default:
-            return .portrait
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let active = scenes.first(where: { $0.activationState == .foregroundActive }) {
+            return active.interfaceOrientation
         }
+        return scenes.first?.interfaceOrientation ?? .portrait
+    }
+
+    private func classifyBowWithOjigiModel(
+        sampleBuffer: CMSampleBuffer,
+        orientation: CGImagePropertyOrientation
+    ) -> (bow: BowAngle?, label: String?) {
+        guard let request = ojigiRequest else {
+            return (nil, nil)
+        }
+
+        let handler = VNImageRequestHandler(
+            cmSampleBuffer: sampleBuffer,
+            orientation: orientation,
+            options: [:]
+        )
+
+        do {
+            try handler.perform([request])
+            guard let top = (request.results as? [VNClassificationObservation])?.first else {
+                return (nil, nil)
+            }
+            return (bowFromModelIdentifier(top.identifier), top.identifier)
+        } catch {
+            return (nil, nil)
+        }
+    }
+
+    private func bowFromModelIdentifier(_ identifier: String) -> BowAngle? {
+        let normalized = identifier.lowercased()
+        if normalized.contains("会釈") || normalized.contains("eishaku") || normalized.contains("15") {
+            return .eishaku
+        }
+        if normalized.contains("敬礼") || normalized.contains("keirei") || normalized.contains("30") {
+            return .keirei
+        }
+        if normalized.contains("最敬礼") || normalized.contains("saikeirei") || normalized.contains("45") || normalized.contains("90") {
+            return .saikeirei
+        }
+        return nil
     }
 }
 
@@ -176,24 +224,29 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
         }
 
+        let orientation = visionOrientation(
+            videoOrientation: connection.videoOrientation,
+            mirrored: connection.isVideoMirrored
+        )
+
+        let modelResult = classifyBowWithOjigiModel(
+            sampleBuffer: sampleBuffer,
+            orientation: orientation
+        )
+
         let request = VNDetectHumanBodyPoseRequest()
         let handler = VNImageRequestHandler(
             cmSampleBuffer: sampleBuffer,
-            orientation: visionOrientation(
-                videoOrientation: connection.videoOrientation,
-                mirrored: connection.isVideoMirrored
-            ),
+            orientation: orientation,
             options: [:]
         )
 
         do {
             try handler.perform([request])
-            guard
-                let observation = request.results?.first
-            else {
+            guard let observation = request.results?.first else {
                 DispatchQueue.main.async {
-                    self.statusText = "人物が見つかりません"
-                    self.detectedBow = nil
+                    self.statusText = modelResult.label.map { "AI判定: \($0)" } ?? "人物が見つかりません"
+                    self.detectedBow = modelResult.bow
                 }
                 return
             }
@@ -210,7 +263,7 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
             else {
                 DispatchQueue.main.async {
                     self.statusText = "姿勢点の検出待機中..."
-                    self.detectedBow = nil
+                    self.detectedBow = modelResult.bow
                 }
                 return
             }
@@ -231,12 +284,9 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
 
             let unitX = dx / length
             let unitY = dy / length
-            let verticalX: CGFloat = 0
-            let verticalY: CGFloat = 1
-            let dot = max(-1.0, min(1.0, unitX * verticalX + unitY * verticalY))
+            let dot = max(-1.0, min(1.0, unitX * 0 + unitY * 1))
             let raw = Double(acos(dot) * 180 / .pi)
 
-            // Vision推定の揺れを軽減するため、単純な平滑化をかける。
             let smoothed: Double
             if let previous = smoothedAngle {
                 smoothed = previous * 0.75 + raw * 0.25
@@ -245,7 +295,8 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
             }
             smoothedAngle = smoothed
 
-            let bow = BowAngle.from(detectedDegrees: smoothed)
+            let poseBow = BowAngle.from(detectedDegrees: smoothed)
+            let finalBow = modelResult.bow ?? poseBow
 
             if isTrackingGestures {
                 let bowedNow = smoothed >= 25
@@ -283,8 +334,8 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
 
             DispatchQueue.main.async {
                 self.estimatedAngle = smoothed
-                self.detectedBow = bow
-                self.statusText = "姿勢検出中"
+                self.detectedBow = finalBow
+                self.statusText = modelResult.label.map { "AI判定: \($0)" } ?? "姿勢検出中"
             }
         } catch {
             DispatchQueue.main.async {
@@ -297,30 +348,74 @@ extension BowMonitoringService: AVCaptureVideoDataOutputSampleBufferDelegate {
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeUIView(context: Context) -> PreviewContainerView {
         let view = PreviewContainerView()
         view.previewLayer.videoGravity = .resizeAspectFill
         view.previewLayer.session = session
+        context.coordinator.previewView = view
+        context.coordinator.updateOrientation()
         return view
     }
 
     func updateUIView(_ uiView: PreviewContainerView, context: Context) {
         uiView.previewLayer.session = session
-        if let connection = uiView.previewLayer.connection, connection.isVideoOrientationSupported {
-            connection.videoOrientation = previewVideoOrientation()
-        }
+        context.coordinator.previewView = uiView
+        context.coordinator.updateOrientation()
     }
 
-    private func previewVideoOrientation() -> AVCaptureVideoOrientation {
-        switch UIDevice.current.orientation {
-        case .landscapeLeft:
-            return .landscapeLeft
-        case .landscapeRight:
-            return .landscapeRight
-        case .portraitUpsideDown:
-            return .portraitUpsideDown
-        default:
-            return .portrait
+    final class Coordinator {
+        weak var previewView: PreviewContainerView?
+        private var observer: NSObjectProtocol?
+
+        init() {
+            observer = NotificationCenter.default.addObserver(
+                forName: UIDevice.orientationDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.updateOrientation()
+            }
+        }
+
+        deinit {
+            if let observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
+
+        func updateOrientation() {
+            guard
+                let connection = previewView?.previewLayer.connection,
+                connection.isVideoOrientationSupported
+            else {
+                return
+            }
+            connection.videoOrientation = previewVideoOrientation()
+        }
+
+        private func previewVideoOrientation() -> AVCaptureVideoOrientation {
+            switch currentInterfaceOrientation() {
+            case .landscapeLeft:
+                return .landscapeRight
+            case .landscapeRight:
+                return .landscapeLeft
+            case .portraitUpsideDown:
+                return .portraitUpsideDown
+            default:
+                return .portrait
+            }
+        }
+
+        private func currentInterfaceOrientation() -> UIInterfaceOrientation {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            if let active = scenes.first(where: { $0.activationState == .foregroundActive }) {
+                return active.interfaceOrientation
+            }
+            return scenes.first?.interfaceOrientation ?? .portrait
         }
     }
 }
@@ -366,4 +461,3 @@ private func visionOrientation(
         return mirrored ? .rightMirrored : .left
     }
 }
-
