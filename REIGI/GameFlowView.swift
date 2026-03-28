@@ -8,10 +8,12 @@ import SwiftUI
 struct GameFlowView: View {
     @State private var stageIndex: Int
     @State private var showHomeConfirm = false
+    let playMode: PlayMode
     let onReturnHome: () -> Void
 
-    init(startStageIndex: Int, onReturnHome: @escaping () -> Void) {
+    init(startStageIndex: Int, playMode: PlayMode, onReturnHome: @escaping () -> Void) {
         _stageIndex = State(initialValue: max(0, min(stages.count - 1, startStageIndex)))
+        self.playMode = playMode
         self.onReturnHome = onReturnHome
     }
 
@@ -22,12 +24,18 @@ struct GameFlowView: View {
                     BowQuizView(
                         onStageClear: advanceStage,
                         onStageSkip: advanceStage,
+                        onStageResult: { correct, total, didSkip in
+                            recordStageResult(correct: correct, total: total, didSkip: didSkip)
+                        },
                         onReturnHome: { showHomeConfirm = true }
                     )
                 } else if stageIndex == 1 {
                     ShrineStageView(
                         onStageClear: advanceStage,
                         onStageSkip: advanceStage,
+                        onStageResult: { correct, total, didSkip in
+                            recordStageResult(correct: correct, total: total, didSkip: didSkip)
+                        },
                         onReturnHome: { showHomeConfirm = true }
                     )
                 } else {
@@ -68,5 +76,18 @@ struct GameFlowView: View {
         } else {
             onReturnHome()
         }
+    }
+
+    private func recordStageResult(correct: Int, total: Int, didSkip: Bool) {
+        guard stages.indices.contains(stageIndex) else { return }
+        let stage = stages[stageIndex]
+        PlayHistoryStore.shared.add(
+            stageID: stage.id,
+            stageTitle: stage.title,
+            playMode: playMode,
+            correct: correct,
+            total: total,
+            didSkip: didSkip
+        )
     }
 }

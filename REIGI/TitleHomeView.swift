@@ -6,9 +6,11 @@
 import SwiftUI
 
 struct TitleHomeView: View {
+    @ObservedObject private var historyStore = PlayHistoryStore.shared
     @State private var showMenu = false
     @State private var animateTitle = false
     @State private var animateButton = false
+    @State private var float3D = false
     @AppStorage("reigi.bgmMuted") private var bgmMuted = false
 
     let startGame: () -> Void
@@ -44,7 +46,37 @@ struct TitleHomeView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 18)
-                .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 18))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.white.opacity(0.60), lineWidth: 1.2)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.24), .clear, Color.white.opacity(0.12)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 12)
+                .shadow(color: Color.white.opacity(0.20), radius: 10, x: -2, y: -2)
+                .rotation3DEffect(
+                    .degrees(float3D ? 5 : 1),
+                    axis: (x: 1, y: 0, z: 0),
+                    perspective: 0.65
+                )
+                .rotation3DEffect(
+                    .degrees(float3D ? -4 : -1),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.65
+                )
+                .padding(.horizontal, 20)
+
+                historyCard
+                    .padding(.horizontal, 20)
 
                 Button {
                     startGame()
@@ -54,20 +86,33 @@ struct TitleHomeView: View {
                         .kerning(2)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 0.67, green: 0.14, blue: 0.14), Color(red: 0.45, green: 0.09, blue: 0.09)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
+                        .background(alignment: .center) {
+                            ZStack {
+                                LinearGradient(
+                                    colors: [Color(red: 0.67, green: 0.14, blue: 0.14), Color(red: 0.45, green: 0.09, blue: 0.09)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.40), .clear],
+                                    startPoint: .top,
+                                    endPoint: .center
+                                )
+                            }
+                        }
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .scaleEffect(animateButton ? 1.02 : 0.98)
                 .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+                .shadow(color: Color(red: 1.0, green: 0.85, blue: 0.65).opacity(0.45), radius: 16, y: 4)
                 .padding(.horizontal, 28)
                 .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: animateButton)
+                .rotation3DEffect(
+                    .degrees(float3D ? 7 : 2),
+                    axis: (x: 1, y: 0, z: 0),
+                    perspective: 0.7
+                )
 
                 Text("左端からスワイプ または 左上メニューでステージ一覧")
                     .font(.footnote)
@@ -102,6 +147,7 @@ struct TitleHomeView: View {
                 animateTitle = true
             }
             animateButton = true
+            float3D = true
             MainBGMPlayer.shared.playMainLoop()
         }
         .onDisappear {
@@ -140,7 +186,11 @@ struct TitleHomeView: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Color(red: 0.44, green: 0.12, blue: 0.12))
                     .frame(width: 40, height: 40)
-                    .background(Color.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 10))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.65), lineWidth: 1)
+                    )
             }
 
             Spacer()
@@ -154,9 +204,16 @@ struct TitleHomeView: View {
     private var japaneseBackground: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(red: 0.99, green: 0.97, blue: 0.92), Color(red: 0.98, green: 0.87, blue: 0.87), Color(red: 0.91, green: 0.93, blue: 0.99)],
+                colors: [Color(red: 0.99, green: 0.97, blue: 0.92), Color(red: 0.98, green: 0.89, blue: 0.90), Color(red: 0.91, green: 0.93, blue: 0.99)],
                 startPoint: .top,
                 endPoint: .bottom
+            )
+            .overlay(
+                LinearGradient(
+                    colors: [.clear, Color.white.opacity(0.22)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
 
             VStack(spacing: 0) {
@@ -179,11 +236,14 @@ struct TitleHomeView: View {
             Circle()
                 .fill(Color(red: 1.0, green: 0.83, blue: 0.62).opacity(0.32))
                 .frame(width: 180, height: 180)
+                .blur(radius: 0.5)
                 .offset(x: 150, y: -270)
+                .shadow(color: Color(red: 1.0, green: 0.83, blue: 0.62).opacity(0.35), radius: 22, y: 8)
             Circle()
                 .fill(Color(red: 0.92, green: 0.65, blue: 0.65).opacity(0.30))
                 .frame(width: 220, height: 220)
                 .offset(x: -165, y: -185)
+                .shadow(color: .black.opacity(0.08), radius: 14, y: 8)
             Circle()
                 .fill(Color(red: 0.71, green: 0.84, blue: 1.0).opacity(0.22))
                 .frame(width: 130, height: 130)
@@ -212,8 +272,81 @@ struct TitleHomeView: View {
                 .stroke(Color.white.opacity(0.24), lineWidth: 1.4)
                 .frame(width: 160, height: 160)
                 .offset(x: 36, y: 246)
+            RoundedRectangle(cornerRadius: 22)
+                .fill(.ultraThinMaterial)
+                .frame(width: 110, height: 72)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22)
+                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
+                )
+                .rotationEffect(.degrees(-9))
+                .offset(x: -156, y: 245)
+                .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .frame(width: 86, height: 54)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.45), lineWidth: 1)
+                )
+                .rotationEffect(.degrees(11))
+                .offset(x: 168, y: -190)
         }
+        .rotation3DEffect(
+            .degrees(float3D ? 8 : 3),
+            axis: (x: 1, y: 0, z: 0),
+            perspective: 0.7
+        )
         .allowsHitTesting(false)
+    }
+
+    private var historyCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("履歴", systemImage: "clock.arrow.circlepath")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color(red: 0.52, green: 0.16, blue: 0.16))
+                Spacer()
+            }
+
+            if historyStore.entries.isEmpty {
+                Text("まだ履歴がありません")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ForEach(Array(historyStore.entries.prefix(3))) { entry in
+                    historyRow(entry)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.58), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+    }
+
+    private func historyRow(_ entry: PlayHistoryEntry) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.stageTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text("\(entry.playMode.rawValue) • \(entry.correct)/\(entry.total)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Text(entry.accuracyText)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(entry.didSkip ? .orange : .green)
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -253,7 +386,12 @@ private struct StageDrawerMenu: View {
                         Spacer()
                     }
                     .padding(10)
-                    .background(Color.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 10))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.58), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
                 }
                 .buttonStyle(.plain)
             }
@@ -270,7 +408,11 @@ private struct StageDrawerMenu: View {
                     Spacer()
                 }
                 .padding(12)
-                .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 12))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.60), lineWidth: 1)
+                )
             }
             .buttonStyle(.plain)
             .padding(.bottom, 18)
@@ -279,12 +421,25 @@ private struct StageDrawerMenu: View {
         .padding(.horizontal, 14)
         .frame(width: 280)
         .frame(maxHeight: .infinity)
-        .background(
+        .background(.regularMaterial)
+        .overlay(
             LinearGradient(
-                colors: [Color(red: 0.96, green: 0.90, blue: 0.84), Color(red: 0.98, green: 0.83, blue: 0.83), Color(red: 0.88, green: 0.91, blue: 0.98)],
-                startPoint: .top,
-                endPoint: .bottom
+                colors: [Color.white.opacity(0.35), .clear],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
+        )
+        .overlay(
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.55), Color.white.opacity(0.1)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 1),
+            alignment: .trailing
         )
         .offset(x: isOpen ? 0 : -300)
         .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isOpen)

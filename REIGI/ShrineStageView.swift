@@ -14,9 +14,12 @@ struct ShrineStageView: View {
     @State private var pathChoice: ShrinePathChoice?
     @State private var message = ""
     @State private var scheduledItems: [DispatchWorkItem] = []
+    @State private var ritualSolved = false
+    @State private var stageResultSent = false
 
     let onStageClear: () -> Void
     let onStageSkip: () -> Void
+    let onStageResult: (_ correct: Int, _ total: Int, _ didSkip: Bool) -> Void
     let onReturnHome: () -> Void
 
     var body: some View {
@@ -117,7 +120,7 @@ struct ShrineStageView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Spacer()
-                    Button("ステージスキップ") { onStageSkip() }
+                    Button("ステージスキップ") { skipStage() }
                         .buttonStyle(.borderedProminent)
                 }
 
@@ -157,7 +160,7 @@ struct ShrineStageView: View {
                 HStack {
                     Button("ホーム") { onReturnHome() }
                         .buttonStyle(.bordered)
-                    Button("ステージスキップ") { onStageSkip() }
+                    Button("ステージスキップ") { skipStage() }
                         .buttonStyle(.bordered)
                     Spacer()
                 }
@@ -202,6 +205,8 @@ struct ShrineStageView: View {
     private func startRitualFlow() {
         cancelAllScheduled()
         message = ""
+        ritualSolved = false
+        stageResultSent = false
         animatePhaseChange(to: .intro)
         QuizAudioPlayer.shared.playOnce()
         schedule(after: 3) {
@@ -255,6 +260,7 @@ struct ShrineStageView: View {
         message = isCorrect ? "正解！次は参道クイズです" : "不正解。二礼二拍手一礼をもう一度"
 
         if isCorrect {
+            ritualSolved = true
             QuizResultSoundPlayer.shared.playCorrect()
             schedule(after: 1.0) {
                 animatePhaseChange(to: .pathQuiz)
@@ -272,6 +278,7 @@ struct ShrineStageView: View {
         if choice == .edge {
             message = "正解！中央は神様の通り道なので、端を歩きます。"
             QuizResultSoundPlayer.shared.playCorrect()
+            sendStageResultIfNeeded(didSkip: false, pathSolved: true)
             schedule(after: 1.1) {
                 onStageClear()
             }
@@ -279,6 +286,19 @@ struct ShrineStageView: View {
             message = "不正解。中央は避けて、端を歩きましょう。"
             QuizResultSoundPlayer.shared.playWrong()
         }
+    }
+
+    private func skipStage() {
+        sendStageResultIfNeeded(didSkip: true, pathSolved: false)
+        onStageSkip()
+    }
+
+    private func sendStageResultIfNeeded(didSkip: Bool, pathSolved: Bool) {
+        guard !stageResultSent else { return }
+        stageResultSent = true
+        let ritualPoint = ritualSolved ? 1 : 0
+        let pathPoint = pathSolved ? 1 : 0
+        onStageResult(ritualPoint + pathPoint, 2, didSkip)
     }
 
     private func animatePhaseChange(to newPhase: Phase) {

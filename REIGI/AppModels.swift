@@ -5,8 +5,13 @@
 
 import SwiftUI
 
+enum PlayMode: String, Codable, Hashable {
+    case fullRun = "通しプレイ"
+    case stageSelect = "ステージ選択"
+}
+
 enum AppScreen: Hashable {
-    case gameFlow(startAt: Int)
+    case gameFlow(startAt: Int, mode: PlayMode)
 }
 
 struct StageInfo: Identifiable {

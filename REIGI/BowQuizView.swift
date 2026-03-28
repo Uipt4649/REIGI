@@ -21,10 +21,12 @@ struct BowQuizView: View {
     @State private var scheduledItems: [DispatchWorkItem] = []
     @State private var openingShown = false
     @State private var resultPulse = false
+    @State private var correctAnswers = 0
 
     let totalQuestions = 3
     let onStageClear: () -> Void
     let onStageSkip: () -> Void
+    let onStageResult: (_ correct: Int, _ total: Int, _ didSkip: Bool) -> Void
     let onReturnHome: () -> Void
 
     var body: some View {
@@ -46,6 +48,7 @@ struct BowQuizView: View {
             currentQuestion = questions[0]
             questionIndex = 1
             feedback = ""
+            correctAnswers = 0
             monitor.start()
             startFlowForCurrentQuestion()
         }
@@ -308,6 +311,7 @@ struct BowQuizView: View {
         resultPulse = false
        
         if isCorrect {
+            correctAnswers += 1
             combo += 1
             score += 100 + combo * 20
             animatePhaseChange(to: .resultCorrect)
@@ -322,6 +326,7 @@ struct BowQuizView: View {
 
     private func goNextQuestionOrClear() {
         if questionIndex >= totalQuestions {
+            onStageResult(correctAnswers, totalQuestions, false)
             onStageClear()
             return
         }
@@ -334,6 +339,7 @@ struct BowQuizView: View {
         cancelAllScheduled()
         ThinkingTimePlayer.shared.stop()
         if questionIndex >= totalQuestions {
+            onStageResult(correctAnswers, totalQuestions, true)
             onStageSkip()
             return
         }

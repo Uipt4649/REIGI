@@ -13,13 +13,13 @@ struct ContentView: View {
     var body: some View {
         NavigationStack(path: $path) {
             TitleHomeView(
-                startGame: { path.append(.gameFlow(startAt: 0)) },
-                startFromStage: { index in path.append(.gameFlow(startAt: index)) }
+                startGame: { path.append(.gameFlow(startAt: 0, mode: .fullRun)) },
+                startFromStage: { index in path.append(.gameFlow(startAt: index, mode: .stageSelect)) }
             )
             .navigationDestination(for: AppScreen.self) { screen in
                 switch screen {
-                case .gameFlow(let index):
-                    GameFlowView(startStageIndex: index, onReturnHome: { path = [] })
+                case .gameFlow(let index, let mode):
+                    GameFlowView(startStageIndex: index, playMode: mode, onReturnHome: { path = [] })
                 }
             }
         }
