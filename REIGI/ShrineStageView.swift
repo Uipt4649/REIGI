@@ -21,7 +21,13 @@ struct ShrineStageView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: [Color(red: 0.13, green: 0.23, blue: 0.17), Color(red: 0.36, green: 0.19, blue: 0.20), Color(red: 0.17, green: 0.24, blue: 0.39)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            Color.white.opacity(0.05).ignoresSafeArea()
             phaseView
                 .opacity(phaseOpacity)
                 .animation(.easeInOut(duration: 0.35), value: phaseOpacity)
@@ -56,6 +62,8 @@ struct ShrineStageView: View {
 
     private var ritualIntroView: some View {
         VStack(spacing: 12) {
+            Text("⛩️")
+                .font(.system(size: 34))
             Text("ステージ2 神社参拝")
                 .font(.headline)
                 .foregroundStyle(.white.opacity(0.85))
@@ -66,6 +74,9 @@ struct ShrineStageView: View {
                 .padding(.horizontal, 20)
 
         }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
+        .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var ritualCountdownView: some View {
@@ -86,6 +97,9 @@ struct ShrineStageView: View {
             .shadow(color: .red.opacity(0.7), radius: 14)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 20)
+            .onAppear {
+                PopSoundPlayer.shared.playOnce()
+            }
     }
 
     private var ritualMonitoringView: some View {
@@ -195,6 +209,7 @@ struct ShrineStageView: View {
             schedule(after: 3) {
                 readyCountdown = 3
                 animatePhaseChange(to: .readyCountdown)
+                CountdownSoundPlayer.shared.playOnce()
                 runReadyTick()
             }
         }

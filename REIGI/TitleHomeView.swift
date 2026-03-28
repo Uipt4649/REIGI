@@ -19,6 +19,8 @@ struct TitleHomeView: View {
             japaneseBackground
                 .ignoresSafeArea()
 
+            decorativeStickers
+
             VStack(spacing: 24) {
                 topBar
 
@@ -34,11 +36,15 @@ struct TitleHomeView: View {
                     Text("REIGI QUEST")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(Color(red: 0.52, green: 0.16, blue: 0.16))
+                    
 
                     Text("日本の礼儀作法をゲームで学ぶ")
                         .font(.headline)
                         .foregroundStyle(.secondary)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 18)
+                .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 18))
 
                 Button {
                     startGame()
@@ -148,7 +154,7 @@ struct TitleHomeView: View {
     private var japaneseBackground: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(red: 0.99, green: 0.97, blue: 0.92), Color(red: 0.96, green: 0.92, blue: 0.83)],
+                colors: [Color(red: 0.99, green: 0.97, blue: 0.92), Color(red: 0.98, green: 0.87, blue: 0.87), Color(red: 0.91, green: 0.93, blue: 0.99)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -166,6 +172,48 @@ struct TitleHomeView: View {
             }
             .opacity(0.4)
         }
+    }
+
+    private var decorativeStickers: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 1.0, green: 0.83, blue: 0.62).opacity(0.32))
+                .frame(width: 180, height: 180)
+                .offset(x: 150, y: -270)
+            Circle()
+                .fill(Color(red: 0.92, green: 0.65, blue: 0.65).opacity(0.30))
+                .frame(width: 220, height: 220)
+                .offset(x: -165, y: -185)
+            Circle()
+                .fill(Color(red: 0.71, green: 0.84, blue: 1.0).opacity(0.22))
+                .frame(width: 130, height: 130)
+                .offset(x: 145, y: 228)
+            Circle()
+                .fill(Color(red: 0.86, green: 0.96, blue: 0.78).opacity(0.16))
+                .frame(width: 260, height: 260)
+                .offset(x: 188, y: 28)
+            Circle()
+                .fill(Color(red: 1.0, green: 0.73, blue: 0.73).opacity(0.16))
+                .frame(width: 112, height: 112)
+                .offset(x: -22, y: -305)
+            Circle()
+                .fill(Color(red: 0.85, green: 0.78, blue: 1.0).opacity(0.15))
+                .frame(width: 86, height: 86)
+                .offset(x: -188, y: 94)
+            Circle()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 74, height: 74)
+                .offset(x: 20, y: -228)
+            Circle()
+                .fill(Color.white.opacity(0.14))
+                .frame(width: 52, height: 52)
+                .offset(x: -120, y: 255)
+            Circle()
+                .stroke(Color.white.opacity(0.24), lineWidth: 1.4)
+                .frame(width: 160, height: 160)
+                .offset(x: 36, y: 246)
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -233,7 +281,7 @@ private struct StageDrawerMenu: View {
         .frame(maxHeight: .infinity)
         .background(
             LinearGradient(
-                colors: [Color(red: 0.95, green: 0.90, blue: 0.84), Color(red: 0.93, green: 0.86, blue: 0.77)],
+                colors: [Color(red: 0.96, green: 0.90, blue: 0.84), Color(red: 0.98, green: 0.83, blue: 0.83), Color(red: 0.88, green: 0.91, blue: 0.98)],
                 startPoint: .top,
                 endPoint: .bottom
             )

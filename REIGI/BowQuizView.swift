@@ -29,7 +29,13 @@ struct BowQuizView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            LinearGradient(
+                colors: [Color(red: 0.17, green: 0.12, blue: 0.29), Color(red: 0.36, green: 0.18, blue: 0.24), Color(red: 0.12, green: 0.28, blue: 0.42)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            Color.white.opacity(0.06).ignoresSafeArea()
             phaseView
                 .opacity(phaseOpacity)
                 .animation(.easeInOut(duration: 0.35), value: phaseOpacity)
@@ -72,6 +78,8 @@ struct BowQuizView: View {
 
     private var introTitleView: some View {
         VStack(spacing: 14) {
+            Text("🎮")
+                .font(.system(size: 38))
             Text("正しいお辞儀をマスターせよ")
                 .font(.system(size: 52, weight: .black, design: .rounded))
                 .foregroundStyle(.white)
@@ -79,6 +87,9 @@ struct BowQuizView: View {
                 .font(.headline)
                 .foregroundStyle(.white.opacity(0.82))
         }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
+        .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var introPromptView: some View {
@@ -88,6 +99,9 @@ struct BowQuizView: View {
             .shadow(color: .red.opacity(0.7), radius: 14)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 20)
+            .onAppear {
+                PopSoundPlayer.shared.playOnce()
+            }
     }
 
     private var introSituationView: some View {
@@ -248,6 +262,7 @@ struct BowQuizView: View {
     private func startReadyCountdown() {
         readyCountdown = 3
         animatePhaseChange(to: .readyCountdown)
+        CountdownSoundPlayer.shared.playOnce()
         runReadyTick()
     }
 
