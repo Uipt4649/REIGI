@@ -24,7 +24,7 @@ struct BowQuizView: View {
     @State private var resultPulse = false
     @State private var correctAnswers = 0
 
-    let totalQuestions = 3
+    private var totalQuestions: Int { questions.count }
     let onStageClear: () -> Void
     let onStageSkip: () -> Void
     let onStageResult: (_ correct: Int, _ total: Int, _ didSkip: Bool) -> Void

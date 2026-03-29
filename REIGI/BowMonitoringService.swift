@@ -79,12 +79,18 @@ final class BowMonitoringService: NSObject, ObservableObject {
     }
 
     private func configureOjigiModel() {
-        guard
-            let model = try? OJIGIClassification(configuration: MLModelConfiguration()).model,
-            let visionModel = try? VNCoreMLModel(for: model)
-        else {
-            return
+        let configuration = MLModelConfiguration()
+        let model: MLModel?
+
+        if let modelURL = Bundle.main.url(forResource: "REIGIClassification 1", withExtension: "mlmodelc") {
+            model = try? MLModel(contentsOf: modelURL, configuration: configuration)
+        } else if let legacyURL = Bundle.main.url(forResource: "OJIGIClassification", withExtension: "mlmodelc") {
+            model = try? MLModel(contentsOf: legacyURL, configuration: configuration)
+        } else {
+            model = nil
         }
+
+        guard let model, let visionModel = try? VNCoreMLModel(for: model) else { return }
         let request = VNCoreMLRequest(model: visionModel)
         request.imageCropAndScaleOption = .centerCrop
         ojigiRequest = request
@@ -113,19 +119,36 @@ final class BowMonitoringService: NSObject, ObservableObject {
         session.sessionPreset = .high
         defer { session.commitConfiguration() }
 
+        let preferredTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInUltraWideCamera,
+            .builtInTrueDepthCamera,
+            .builtInWideAngleCamera
+        ]
+
+        let discovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: preferredTypes,
+            mediaType: .video,
+            position: .front
+        )
+
+        let orderedFrontCameras = discovery.devices.sorted {
+            cameraPriority($0.deviceType) < cameraPriority($1.deviceType)
+        }
+
         guard
-            let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+            let camera = orderedFrontCameras.first,
             let input = try? AVCaptureDeviceInput(device: camera),
             session.canAddInput(input)
         else {
             DispatchQueue.main.async {
-                self.statusText = "前面カメラを利用できません"
+                self.statusText = "内側カメラを利用できません"
             }
             return
         }
 
         session.addInput(input)
         cameraPosition = input.device.position
+        setInitialZoomForWideAngle(camera)
 
         videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
@@ -149,6 +172,31 @@ final class BowMonitoringService: NSObject, ObservableObject {
         }
 
         configured = true
+    }
+
+    private func setInitialZoomForWideAngle(_ device: AVCaptureDevice) {
+        let targetZoom: CGFloat = 0.5
+        let clamped = min(max(targetZoom, device.minAvailableVideoZoomFactor), device.maxAvailableVideoZoomFactor)
+        do {
+            try device.lockForConfiguration()
+            device.videoZoomFactor = clamped
+            device.unlockForConfiguration()
+        } catch {
+            // Ignore zoom setup failures and continue with device default.
+        }
+    }
+
+    private func cameraPriority(_ type: AVCaptureDevice.DeviceType) -> Int {
+        switch type {
+        case .builtInUltraWideCamera:
+            return 0
+        case .builtInTrueDepthCamera:
+            return 1
+        case .builtInWideAngleCamera:
+            return 2
+        default:
+            return 99
+        }
     }
 
     private func currentVideoOrientation() -> AVCaptureVideoOrientation {
@@ -207,6 +255,9 @@ final class BowMonitoringService: NSObject, ObservableObject {
         }
         if normalized.contains("最敬礼") || normalized.contains("saikeirei") || normalized.contains("45") || normalized.contains("90") {
             return .saikeirei
+        }
+        if normalized.contains("土下座") || normalized.contains("dogeza") {
+            return .dogeza
         }
         return nil
     }
@@ -439,8 +490,10 @@ extension BowAngle {
             return .eishaku
         case 23..<40:
             return .keirei
-        default:
+        case 40..<75:
             return .saikeirei
+        default:
+            return .dogeza
         }
     }
 }

@@ -22,6 +22,8 @@ struct TitleHomeView: View {
             japaneseBackground
                 .ignoresSafeArea()
 
+            fullScreenLogo
+
             decorativeStickers
 
             VStack(spacing: 24) {
@@ -30,7 +32,7 @@ struct TitleHomeView: View {
                 Spacer()
 
                 VStack(spacing: 14) {
-                    Text("礼儀之道")
+                    Text("礼儀")
                         .font(.system(size: 56, weight: .black, design: .serif))
                         .foregroundStyle(Color(red: 0.20, green: 0.08, blue: 0.08))
                         .opacity(animateTitle ? 1 : 0)
@@ -45,35 +47,6 @@ struct TitleHomeView: View {
                         .font(.headline)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 18)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .stroke(Color.white.opacity(0.60), lineWidth: 1.2)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.24), .clear, Color.white.opacity(0.12)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                )
-                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 12)
-                .shadow(color: Color.white.opacity(0.20), radius: 10, x: -2, y: -2)
-                .rotation3DEffect(
-                    .degrees(float3D ? 5 : 1),
-                    axis: (x: 1, y: 0, z: 0),
-                    perspective: 0.65
-                )
-                .rotation3DEffect(
-                    .degrees(float3D ? -4 : -1),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.65
-                )
                 .padding(.horizontal, 20)
 
                 historyCard
@@ -126,11 +99,11 @@ struct TitleHomeView: View {
             if showMenu {
                 Color.black.opacity(0.24)
                     .ignoresSafeArea()
+                    .contentShape(Rectangle())
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                            showMenu = false
-                        }
+                        closeMenu()
                     }
+                    .zIndex(1)
             }
 
             StageDrawerMenu(
@@ -138,10 +111,12 @@ struct TitleHomeView: View {
                 stages: stages,
                 bgmMuted: $bgmMuted,
                 startFromStage: { index in
-                    showMenu = false
+                    closeMenu()
                     startFromStage(index)
                 }
             )
+            .allowsHitTesting(showMenu)
+            .zIndex(2)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.6)) {
@@ -160,28 +135,36 @@ struct TitleHomeView: View {
                 MainBGMPlayer.shared.playMainLoop()
             }
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 18)
-                .onEnded { value in
-                    if value.startLocation.x < 24, value.translation.width > 40 {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                            showMenu = true
-                        }
-                    } else if value.translation.width < -40 {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                            showMenu = false
-                        }
-                    }
+        .simultaneousGesture(menuDragGesture, including: showMenu ? .none : .all)
+    }
+
+    private var menuDragGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onEnded { value in
+                if value.startLocation.x < 24, value.translation.width > 40 {
+                    openMenu()
+                } else if value.translation.width < -40 {
+                    closeMenu()
                 }
-        )
+            }
+    }
+
+    private func openMenu() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+            showMenu = true
+        }
+    }
+
+    private func closeMenu() {
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
+            showMenu = false
+        }
     }
 
     private var topBar: some View {
         HStack {
             Button {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.84)) {
-                    showMenu.toggle()
-                }
+                showMenu ? closeMenu() : openMenu()
             } label: {
                 Image(systemName: "line.3.horizontal")
                     .font(.title3.weight(.bold))
@@ -273,25 +256,6 @@ struct TitleHomeView: View {
                 .stroke(Color.white.opacity(0.24), lineWidth: 1.4)
                 .frame(width: 160, height: 160)
                 .offset(x: 36, y: 246)
-            RoundedRectangle(cornerRadius: 22)
-                .fill(.ultraThinMaterial)
-                .frame(width: 110, height: 72)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22)
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
-                )
-                .rotationEffect(.degrees(-9))
-                .offset(x: -156, y: 245)
-                .shadow(color: .black.opacity(0.08), radius: 10, y: 6)
-            RoundedRectangle(cornerRadius: 20)
-                .fill(.ultraThinMaterial)
-                .frame(width: 86, height: 54)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.white.opacity(0.45), lineWidth: 1)
-                )
-                .rotationEffect(.degrees(11))
-                .offset(x: 168, y: -190)
         }
         .rotation3DEffect(
             .degrees(float3D ? 8 : 3),
@@ -299,6 +263,16 @@ struct TitleHomeView: View {
             perspective: 0.7
         )
         .allowsHitTesting(false)
+    }
+
+    private var fullScreenLogo: some View {
+        Image("礼儀")
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .opacity(0.20)
+            .padding(.horizontal, 8)
+            .allowsHitTesting(false)
     }
 
     private var historyCard: some View {
@@ -429,6 +403,7 @@ private struct StageDrawerMenu: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+            .allowsHitTesting(false)
         )
         .overlay(
             Rectangle()
@@ -439,9 +414,11 @@ private struct StageDrawerMenu: View {
                         endPoint: .bottom
                     )
                 )
-                .frame(width: 1),
+                .frame(width: 1)
+                .allowsHitTesting(false),
             alignment: .trailing
         )
+        .contentShape(Rectangle())
         .offset(x: isOpen ? 0 : -300)
         .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isOpen)
     }

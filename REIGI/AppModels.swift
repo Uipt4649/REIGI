@@ -24,9 +24,8 @@ struct StageInfo: Identifiable {
 }
 
 let stages: [StageInfo] = [
-    .init(id: 0, title: "ステージ1 お辞儀", subtitle: "会釈・敬礼・最敬礼を判定", icon: "figure.stand", emoji: nil),
-    .init(id: 1, title: "ステージ2 神社参拝", subtitle: "鳥居・手水・二礼二拍手一礼の作法", icon: nil, emoji: "⛩️"),
-    .init(id: 2, title: "ステージ3 訪問マナー", subtitle: "入室・席次・挨拶の基本", icon: "building.2", emoji: nil)
+    .init(id: 0, title: "ステージ1 お辞儀", subtitle: "会釈・敬礼・最敬礼・土下座を判定", icon: "figure.stand", emoji: nil),
+    .init(id: 1, title: "ステージ2 神社参拝", subtitle: "鳥居・手水・二礼二拍手一礼の作法", icon: nil, emoji: "⛩️")
 ]
 
 enum ShrinePathChoice: CaseIterable {
@@ -70,6 +69,12 @@ struct BowQuestion {
             description: "大きな失礼やミスをしてしまい、深い謝罪を示す場面です。",
             answer: .saikeirei,
             symbol: "exclamationmark.triangle"
+        ),
+        .init(
+            title: "取り返しのつかない失敗の謝罪",
+            description: "最大限の謝罪を示す必要があり、土下座で誠意を伝える場面です。",
+            answer: .dogeza,
+            symbol: "person.and.background.dotted"
         )
     ]
 }
@@ -78,6 +83,7 @@ enum BowAngle: CaseIterable {
     case eishaku
     case keirei
     case saikeirei
+    case dogeza
 
     var label: String {
         switch self {
@@ -87,6 +93,8 @@ enum BowAngle: CaseIterable {
             return "敬礼 30°"
         case .saikeirei:
             return "最敬礼 45-90°"
+        case .dogeza:
+            return "土下座"
         }
     }
 }
