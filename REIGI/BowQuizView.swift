@@ -81,19 +81,70 @@ struct BowQuizView: View {
     }
 
     private var introTitleView: some View {
-        VStack(spacing: 14) {
-            Text("🎮")
-                .font(.system(size: 38))
-            Text("正しいお辞儀をマスターせよ")
-                .font(.system(size: 52, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-            Text("第1ステージ")
-                .font(.headline)
-                .foregroundStyle(.white.opacity(0.82))
+        GeometryReader { proxy in
+            let w = proxy.size.width
+            let h = proxy.size.height
+            let titleSize = min(max(w * 0.10, 44), 64)
+            let subtitleSize = min(max(w * 0.045, 18), 28)
+            let chipSize = min(max(w * 0.042, 15), 24)
+            let imageWidth = min(w * 0.92, 560)
+            let imageHeight = min(max(h * 0.36, 230), 380)
+
+            VStack(spacing: 14) {
+                Text("正しいお辞儀をマスターせよ")
+                    .font(.system(size: titleSize, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+
+                Image("礼儀")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: imageWidth, height: imageHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.white.opacity(0.60), lineWidth: 1.4)
+                    )
+                    .shadow(color: .black.opacity(0.30), radius: 12, y: 6)
+
+                Text("お辞儀の説明画像を参考に、場面に合う角度を選ぼう")
+                    .font(.system(size: subtitleSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        guideChip("会釈 15°", size: chipSize)
+                        guideChip("敬礼 30°", size: chipSize)
+                    }
+                    HStack(spacing: 10) {
+                        guideChip("最敬礼 90°", size: chipSize)
+                        guideChip("土下座", size: chipSize)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+
+                Text("第1ステージ")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white.opacity(0.86))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 18)
         .padding(.vertical, 18)
         .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func guideChip(_ text: String, size: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: size, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.20), in: Capsule())
     }
 
     private var introPromptView: some View {
@@ -125,9 +176,6 @@ struct BowQuizView: View {
                 .foregroundStyle(.white.opacity(0.9))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
-            Text("目標角度: \(currentQuestion.answer.label)")
-                .font(.headline)
-                .foregroundStyle(.cyan)
             if !feedback.isEmpty {
                 Text(feedback)
                     .font(.headline.weight(.bold))
@@ -176,9 +224,6 @@ struct BowQuizView: View {
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundStyle(.yellow)
 
-                Text("目標: \(currentQuestion.answer.label)")
-                    .foregroundStyle(.white.opacity(0.92))
-
                 if let detected = monitor.detectedBow {
                     Text("現在検出: \(detected.label)")
                         .foregroundStyle(.cyan)
@@ -198,6 +243,26 @@ struct BowQuizView: View {
                 Spacer()
             }
             .padding()
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Image("礼儀")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 240, height: 164)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.72), lineWidth: 1.2)
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                }
+                Spacer()
+            }
+            .padding(.top, 56)
+            .padding(.trailing, 14)
+            .allowsHitTesting(false)
         }
     }
 
@@ -250,7 +315,7 @@ struct BowQuizView: View {
             }
         } else {
             QuizAudioPlayer.shared.playOnce()
-            schedule(after: 3) {
+            schedule(after: 5) {
                 animatePhaseChange(to: .introPrompt)
                 schedule(after: 3) {
                     animatePhaseChange(to: .introSituation)

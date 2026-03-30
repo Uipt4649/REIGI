@@ -24,8 +24,7 @@ struct StageInfo: Identifiable {
 }
 
 let stages: [StageInfo] = [
-    .init(id: 0, title: "ステージ1 お辞儀", subtitle: "会釈・敬礼・最敬礼・土下座を判定", icon: "figure.stand", emoji: nil),
-    .init(id: 1, title: "ステージ2 神社参拝", subtitle: "鳥居・手水・二礼二拍手一礼の作法", icon: nil, emoji: "⛩️")
+    .init(id: 0, title: "ステージ1 お辞儀", subtitle: "会釈・敬礼・最敬礼・土下座を判定", icon: "figure.stand", emoji: nil)
 ]
 
 enum ShrinePathChoice: CaseIterable {
@@ -92,7 +91,7 @@ enum BowAngle: CaseIterable {
         case .keirei:
             return "敬礼 30°"
         case .saikeirei:
-            return "最敬礼 45-90°"
+            return "最敬礼 90°"
         case .dogeza:
             return "土下座"
         }

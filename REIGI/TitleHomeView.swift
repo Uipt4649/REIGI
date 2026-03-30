@@ -52,6 +52,9 @@ struct TitleHomeView: View {
                 historyCard
                     .padding(.horizontal, 20)
 
+                announcementCard
+                    .padding(.horizontal, 20)
+
                 Button {
                     startGame()
                 } label: {
@@ -305,6 +308,68 @@ struct TitleHomeView: View {
         .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
     }
 
+    private var announcementCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "megaphone.fill")
+                    .foregroundStyle(Color(red: 0.84, green: 0.24, blue: 0.24))
+                Text("お知らせ")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color(red: 0.72, green: 0.14, blue: 0.14))
+                Spacer()
+                Text("体験会限定")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.88, green: 0.29, blue: 0.29), Color(red: 0.70, green: 0.12, blue: 0.12)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        in: Capsule()
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("お辞儀以外の礼儀アイディアを募集中です。")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color(red: 0.35, green: 0.08, blue: 0.08))
+                Text("左上の三本線メニューから投稿してください。")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color(red: 0.72, green: 0.20, blue: 0.20))
+            }
+            .fixedSize(horizontal: false, vertical: true)
+
+            Text("byゆるゆる班うい")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(red: 1.0, green: 0.92, blue: 0.92).opacity(0.58), Color.white.opacity(0.20)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            }
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color(red: 0.90, green: 0.52, blue: 0.52).opacity(0.85), lineWidth: 1.5)
+        )
+        .shadow(color: Color(red: 0.84, green: 0.24, blue: 0.24).opacity(0.22), radius: 14, y: 5)
+    }
+
     private func historyRow(_ entry: PlayHistoryEntry) -> some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
@@ -326,10 +391,20 @@ struct TitleHomeView: View {
 }
 
 private struct StageDrawerMenu: View {
+    @ObservedObject private var ideaStore = IdeaSuggestionStore.shared
+    @State private var ideaText = ""
+    @State private var postPulse: Bool = false
+    @State private var showClearConfirm: Bool = false
+    @FocusState private var isIdeaEditorFocused: Bool
+
     let isOpen: Bool
     let stages: [StageInfo]
     @Binding var bgmMuted: Bool
     let startFromStage: (Int) -> Void
+
+    private var trimmedIdeaText: String {
+        ideaText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -370,6 +445,8 @@ private struct StageDrawerMenu: View {
                 }
                 .buttonStyle(.plain)
             }
+
+            ideaSubmissionSection
 
             Spacer()
 
@@ -419,7 +496,135 @@ private struct StageDrawerMenu: View {
             alignment: .trailing
         )
         .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                isIdeaEditorFocused = false
+            }
+        )
         .offset(x: isOpen ? 0 : -300)
         .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isOpen)
     }
+    
+    private var ideaSubmissionSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "lightbulb.max.fill")
+                    .foregroundStyle(Color(red: 0.76, green: 0.47, blue: 0.05))
+                Text("体験会アイデア募集")
+                    .font(.subheadline.weight(.bold))
+                Spacer()
+                Text("\(ideaStore.entries.count)件")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("REIGIに追加したい礼儀・遊び方を教えてください")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $ideaText)
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .frame(height: 88)
+                    .focused($isIdeaEditorFocused)
+                    .background(Color.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.8), lineWidth: 1)
+                    )
+
+                if trimmedIdeaText.isEmpty {
+                    Text("（例）二礼二拍手一礼")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                        .padding(.top, 16)
+                        .padding(.leading, 14)
+                        .allowsHitTesting(false)
+                }
+            }
+
+            Button {
+                let before = ideaStore.entries.count
+                ideaStore.add(ideaText)
+                if ideaStore.entries.count > before {
+                    ideaText = ""
+                    isIdeaEditorFocused = false
+                    postPulse.toggle()
+                }
+            } label: {
+                Text("アイデアを投稿")
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        LinearGradient(
+                            colors: [Color(red: 0.76, green: 0.47, blue: 0.05), Color(red: 0.59, green: 0.32, blue: 0.02)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            .opacity(trimmedIdeaText.isEmpty ? 0.55 : 1)
+            .disabled(trimmedIdeaText.isEmpty)
+            .scaleEffect(postPulse ? 1.03 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.65), value: postPulse)
+
+            if !ideaStore.entries.isEmpty {
+                HStack {
+                    Text("最新の投稿")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("全削除") {
+                        showClearConfirm = true
+                    }
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.red)
+                }
+
+                VStack(spacing: 6) {
+                    ForEach(Array(ideaStore.entries.prefix(2))) { entry in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(entry.text)
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Button {
+                                ideaStore.remove(id: entry.id)
+                            } label: {
+                                Image(systemName: "trash.fill")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.red)
+                                    .padding(6)
+                                    .background(Color.white.opacity(0.8), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.58), lineWidth: 1)
+        )
+        .confirmationDialog("投稿をすべて削除しますか？", isPresented: $showClearConfirm, titleVisibility: .visible) {
+            Button("すべて削除", role: .destructive) {
+                ideaStore.removeAll()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+    }
 }
+

@@ -30,15 +30,6 @@ struct GameFlowView: View {
                         },
                         onReturnHome: { showHomeConfirm = true }
                     )
-                } else if stageIndex == 1 {
-                    ShrineStageView(
-                        onStageClear: advanceStage,
-                        onStageSkip: advanceStage,
-                        onStageResult: { correct, total, didSkip in
-                            recordStageResult(correct: correct, total: total, didSkip: didSkip)
-                        },
-                        onReturnHome: { showHomeConfirm = true }
-                    )
                 } else {
                     GenericStageView(
                         stage: stages[stageIndex],
